@@ -23,7 +23,7 @@ function newConnection(socket) {
   
 
   socket.on('disconnect', disconnected);
-  function disconnected() {
+  function disconnected() { 
     console.log("number of connections: " + connections);
     connections--;
     console.log(socket.id + ' disconnected');

@@ -1,0 +1,28 @@
+{
+  "name": "majiang",
+  "version": "1.0.0",
+  "description": "Online MaJiang game",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericx1e/Online-Majiang.git"
+  },
+  "keywords": [
+    "p5.js",
+    "node"
+  ],
+  "author": "Eric Xie",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ericx1e/Online-Majiang/issues"
+  },
+  "homepage": "https://github.com/ericx1e/Online-Majiang#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^2.3.0"
+  }
+}
