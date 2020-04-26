@@ -2,6 +2,7 @@
 
 let back;
 let board;
+let tex;
 let pieces = [];
 let pieceNames = ['m', 'p', 's'];
 let extraPieceNames = ['dg', 'dr', 'dw', 'we', 'wn', 'ws', 'ww'];
@@ -13,6 +14,7 @@ let hand = [];
 function preload() {
   back = loadImage('images/back.png');
   board = loadImage('images/background.jpg');
+  tex = loadImage('images/background.png');
   pieceNames.forEach((item, i) => {
     for (var n = 1; n <= 9; n++) {
       pieces.push(loadImage('images/' + item + n + '.png'));
@@ -47,6 +49,9 @@ function draw() {
   rotateX(angle);
   image(board, 0, 0, windowWidth, windowHeight);
   translate(0, 0, -100);
+  // fill(0, 100, 0);
+  texture(tex);
+  textureMode(IMAGE);
   box(windowWidth, windowHeight, 199);
   pop();
   // noStroke();
