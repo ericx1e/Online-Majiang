@@ -10,7 +10,7 @@ const tileWidth = 60;
 const tileHeight = 80;
 const tileDepth = 40;
 let hand = [];
-let myRoom = 'none';
+let myRoom = '';
 let myName = '';
 let input = '';
 
@@ -54,7 +54,7 @@ function draw() {
     text("Enter your name", 0, -height/2+100);
     text(input, 0, 0);
     return;
-  } else if(myRoom == 'none') {
+  } else if(myRoom == '') {
     background(51);
     textAlign(CENTER,CENTER);
     textFont(inconsolata);
@@ -122,33 +122,21 @@ function keyPressed() {
     keys.down = true;
   }
   if(myName == '') {
-    if(keyCode >= 65 && keyCode <= 90) {
+    if(key.length == 1) {
       input+=key;
     }
-    if(key == ' ') {
-      input+=' ';
-    }
-    if(key == 'Backspace') {
-      input = input.substring(0, input.length-1);
-    }
-    if(key == 'Enter') {
+    if(input.length > 0 && key == 'Enter') {
       myName = input;
       socket.emit('new name', myName);
       input = '';
       return;
     }
   }
-  if(myName != '' && myRoom == 'none')
-    if(keyCode >= 65 && keyCode <= 90) {
+  else if(myRoom == '')
+    if(key.length == 1) {
       input+=key;
     }
-    if(key == ' ') {
-      input+=' ';
-    }
-    if(key == 'Backspace') {
-      input = input.substring(0, input.length-1);
-    }
-    if(key == 'Enter') {
+    if(input.length > 0 && key == 'Enter') {
       socket.emit('create or join', input);
       input = '';
     }
