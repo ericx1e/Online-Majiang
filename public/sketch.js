@@ -1,5 +1,5 @@
 // import Tile from './tile'
-
+let socket = io.connect('http://localhost:4000/');
 let back;
 let board;
 let tex;
@@ -10,6 +10,7 @@ const tileWidth = 60;
 const tileHeight = 80;
 const tileDepth = 40;
 let hand = [];
+let myRoom = 'none';
 
 function preload() {
   back = loadImage('images/back.png');
@@ -42,7 +43,13 @@ let index = 0;
 
 function draw() {
   background(51);
-  angle = (mouseX-500)/500;
+  if(keys.up) {
+    angle-=0.025;
+  }
+
+  if(keys.down) {
+    angle+=0.025;
+  }
   lights();
   push();
   translate(0, 0, -200);
@@ -77,6 +84,46 @@ function draw() {
 
   // plane(150);
   // angle += 0.07;
+}
+
+let keys = {
+  up: false,
+  down: false,
+}
+
+function keyPressed() {
+  if(key == 'ArrowUp') {
+    keys.up = true;
+  }
+  if(key == 'ArrowDown') {
+    keys.down = true;
+  }
+  if(myRoom == 'none')
+  socket.emit('create or join', key);
+}
+
+socket.on('created', (room) => {
+  console.log('created room ', room);
+  myRoom = room;
+});
+
+socket.on('joined', (room) => {
+  console.log('joined room ', room);
+  myRoom = room;
+});
+
+socket.on('full', (room) => {
+  console.log('room ', room, ' is full');
+});
+
+
+function keyReleased() {
+  if(key == 'ArrowUp') {
+    keys.up = false;
+  }
+  if(key == 'ArrowDown') {
+    keys.down = false;
+  }
 }
 
 class Tile {
