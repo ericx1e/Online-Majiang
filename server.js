@@ -13,14 +13,15 @@ var io = require('socket.io').listen(server);
 // var io = socket(server);
 
 let rooms = new Map();
+let socketNames = new Map();
 
 io.sockets.on('connection', (socket) => {
   console.log('new connection ' + socket.id);
   connections++;
   console.log("number of connections: " + connections);
 
-  socket.on("joinRoom", (room) => {
-    socket.join(room);
+  socket.on('new name', (name) => {
+    socketNames.set(socket.id, name);
   });
 
   socket.on('create or join', function(room)
@@ -47,6 +48,7 @@ io.sockets.on('connection', (socket) => {
              io.sockets. in (room).emit('join', room);
              socket.join(room);
              socket.emit('joined', room);
+             io.to(room).emit('otherjoined', socketNames.get(socket.id));
          }
          else
          {

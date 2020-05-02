@@ -1,5 +1,5 @@
 // import Tile from './tile'
-let socket = io.connect('http://localhost:4000/');
+let socket = io.connect('http://192.168.2.179:4000/');
 let back;
 let board;
 let tex;
@@ -11,11 +11,14 @@ const tileHeight = 80;
 const tileDepth = 40;
 let hand = [];
 let myRoom = 'none';
+let myName = '';
+let input = '';
 
 function preload() {
   back = loadImage('images/back.png');
   board = loadImage('images/background.jpg');
   tex = loadImage('images/background.png');
+  inconsolata = loadFont('assets/Inconsolata-Black.otf');
   pieceNames.forEach((item, i) => {
     for (var n = 1; n <= 9; n++) {
       pieces.push(loadImage('images/' + item + n + '.png'));
@@ -42,6 +45,26 @@ let angle = 30 * Math.PI / 180;
 let index = 0;
 
 function draw() {
+  if(myName == '') {
+    background(51);
+    textAlign(CENTER,CENTER);
+    textFont(inconsolata);
+    textSize(70);
+    fill(255);
+    text("Enter your name", 0, -height/2+100);
+    text(input, 0, 0);
+    return;
+  } else if(myRoom == 'none') {
+    background(51);
+    textAlign(CENTER,CENTER);
+    textFont(inconsolata);
+    textSize(70);
+    fill(255);
+    text("Enter a room name to create or join", 0, -height/2+100);
+    text(input, 0, 0);
+    return;
+  }
+
   background(51);
   if(keys.up) {
     angle-=0.025;
@@ -98,22 +121,55 @@ function keyPressed() {
   if(key == 'ArrowDown') {
     keys.down = true;
   }
-  if(myRoom == 'none')
-  socket.emit('create or join', key);
+  if(myName == '') {
+    if(keyCode >= 65 && keyCode <= 90) {
+      input+=key;
+    }
+    if(key == ' ') {
+      input+=' ';
+    }
+    if(key == 'Backspace') {
+      input = input.substring(0, input.length-1);
+    }
+    if(key == 'Enter') {
+      myName = input;
+      socket.emit('new name', myName);
+      input = '';
+      return;
+    }
+  }
+  if(myName != '' && myRoom == 'none')
+    if(keyCode >= 65 && keyCode <= 90) {
+      input+=key;
+    }
+    if(key == ' ') {
+      input+=' ';
+    }
+    if(key == 'Backspace') {
+      input = input.substring(0, input.length-1);
+    }
+    if(key == 'Enter') {
+      socket.emit('create or join', input);
+      input = '';
+    }
 }
 
 socket.on('created', (room) => {
-  console.log('created room ', room);
+  console.log('created room', room);
   myRoom = room;
 });
 
 socket.on('joined', (room) => {
-  console.log('joined room ', room);
+  console.log('joined room', room);
   myRoom = room;
 });
 
 socket.on('full', (room) => {
-  console.log('room ', room, ' is full');
+  console.log('room', room, 'is full');
+});
+
+socket.on('otherjoined', (id) => {
+  console.log(id, 'joined the room');
 });
 
 
