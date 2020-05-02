@@ -32,7 +32,8 @@ function preload() {
 }
 
 function setup() {
-  const cv = createCanvas(windowWidth, windowHeight, WEBGL);
+  const cv = createCanvas(displayWidth, displayHeight, WEBGL);
+  fullscreen(true);
   imageMode(CENTER);
   cv.position(0, 0);
   for (var i = 0; i < 13; i++) {
@@ -125,21 +126,27 @@ function keyPressed() {
     if(key.length == 1) {
       input+=key;
     }
+    if(key == 'Backspace') {
+      input = input.substring(0, input.length-1);
+    }
     if(input.length > 0 && key == 'Enter') {
       myName = input;
       socket.emit('new name', myName);
       input = '';
       return;
     }
-  }
-  else if(myRoom == '')
+  } else if(myRoom == '') {
     if(key.length == 1) {
       input+=key;
+    }
+    if(key == 'Backspace') {
+      input = input.substring(0, input.length-1);
     }
     if(input.length > 0 && key == 'Enter') {
       socket.emit('create or join', input);
       input = '';
     }
+  }
 }
 
 socket.on('created', (room) => {
