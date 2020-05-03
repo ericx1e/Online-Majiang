@@ -6,13 +6,17 @@ let tex;
 let pieces = [];
 let pieceNames = ['m', 'p', 's'];
 let extraPieceNames = ['dg', 'dr', 'dw', 'we', 'wn', 'ws', 'ww'];
-const tileWidth = 60;
-const tileHeight = 80;
-const tileDepth = 40;
+let tileWidth = 60/1920;
+let tileHeight = 80/1920;
+let tileDepth = 40/1920;
 let hand = [];
 let myRoom = '';
 let myName = '';
 let input = '';
+let tableWidth = 1500/1920;
+let tableDepth = 1500/1080;
+let tableHeight = 200;
+let selected;
 
 function preload() {
   back = loadImage('images/back.png');
@@ -33,16 +37,22 @@ function preload() {
 
 function setup() {
   const cv = createCanvas(displayWidth, displayHeight, WEBGL);
+  tableWidth *= displayWidth;
+  tableDepth *= displayHeight;
+  tileWidth *= displayWidth;
+  tileDepth *= displayWidth;
+  tileHeight *= displayWidth;
+  console.log(displayWidth, displayHeight);
   fullscreen(true);
   imageMode(CENTER);
   cv.position(0, 0);
   for (var i = 0; i < 13; i++) {
-    let t = new Tile(pieces[Math.floor(Math.random() * pieces.length)], i * tileWidth-13*tileWidth/2+i*2, -tileHeight / 2, -250);
+    let t = new Tile(pieces[Math.floor(Math.random() * pieces.length)], i * tileWidth-13*tileWidth/2+i*2+tileWidth/2-13, -tileHeight / 2, -tableDepth/2+175);
     hand.push(t);
   }
 }
 
-let angle = 30 * Math.PI / 180;
+let angle = 70 * Math.PI / 180;
 let index = 0;
 
 function draw() {
@@ -78,12 +88,12 @@ function draw() {
   push();
   translate(0, 0, -200);
   rotateX(angle);
-  image(board, 0, 0, windowWidth, windowHeight);
+  image(board, 0, 0, tableWidth, tableDepth);
   translate(0, 0, -100);
   // fill(0, 100, 0);
   texture(tex);
   textureMode(IMAGE);
-  box(windowWidth, windowHeight, 199);
+  box(tableWidth, tableDepth, tableHeight-1);
   pop();
   // noStroke();
   // normalMaterial();
@@ -106,8 +116,20 @@ function draw() {
     });
   }
 
+
+  if(selected != undefined) {
+    selected[0].highlight();
+  }
+
   // plane(150);
   // angle += 0.07;
+}
+
+function updatePositions() {
+  let n = hand.length;
+  for (var i = 0; i < n; i++) {
+    hand[i].x = i * tileWidth-n*tileWidth/2+i*2+tileWidth/2-n;
+  }
 }
 
 let keys = {
@@ -177,12 +199,52 @@ function keyReleased() {
   }
 }
 
+
+function mousePressed() {
+
+  hand.some((item, i) => {
+    // console.log(dist(0*tileWidth-tileWidth/2, height-tileHeight*2, mouseX, mouseY));
+    if(dist(2.5*i*tileWidth+0*tileWidth, height-tileHeight*2, 0, mouseX, mouseY, 0) < tileWidth*2) {
+      if(selected == undefined) {
+        selected = [item, i];
+      } else {
+        if(selected[1] == i) {
+          selected = undefined
+        } else {
+          // hand[selected[1]] = undefined;
+          // hand[selected[1]] = new Tile(item.image, selected[0].x, selected[0].y, selected[0].z);
+          // hand[i] = new Tile(selected[0].image, hand[i].x,hand[i].y,hand[i].z);
+          hand.splice(selected[1], 1);
+          hand.splice(i, 0, new Tile(selected[0].image, hand[i].x,hand[i].y,hand[i].z));
+          hand.join();
+          updatePositions();
+          selected = undefined;
+        }
+      }
+      return true;
+    }
+  });
+}
+
 class Tile {
   constructor(image, x, y, z) {
     this.image = image;
     this.x = x;
     this.y = y;
     this.z = z;
+  }
+
+  highlight() {
+    push();
+    rotateX(PI / 2 + angle);
+    rotateZ(PI);
+    push();
+    translate(-this.x, this.y, this.z+tileDepth / 2 + 1);
+    noFill();
+    stroke(255,0,0);
+    box(tileWidth+2, tileHeight+2, tileDepth+2);
+    pop();
+    pop();
   }
 
   show() {
