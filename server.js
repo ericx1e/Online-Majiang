@@ -59,6 +59,14 @@ io.sockets.on('connection', (socket) => {
     connections--;
     console.log(socket.id + ' disconnected');
     console.log("number of connections: " + connections);
+    let name = socketNames.get(socket.id);
+    rooms.forEach((room, i) => {
+      if(room.includes(name)) {
+        io.to(room).emit('otherleft', name);
+        room.splice(room.indexOf(name), 1);
+      }
+    });
+
   });
 });
 

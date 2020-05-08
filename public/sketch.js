@@ -138,6 +138,33 @@ function draw() {
     });
   });
 
+  otherPlayers.forEach((item, i) => {
+    push();
+    rotateX(PI / 2 + angle);
+    rotateZ(PI);
+    translate(0, -tableHeight / 2, 0);
+    rotateY((i - 1) * PI / 2);
+    translate(0, -100, tableDepth / 2);
+    fill(150);
+    push();
+    translate(0, 0, 150);
+    sphere(100);
+    push();
+    translate(0, 200, 0);
+    cylinder(50, 400);
+    pop();
+    pop();
+    rotateY(PI);
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textFont(inconsolata);
+    textSize(100);
+    fill(255);
+    text(item, 0, 0);
+    // box(100, 100, 100);
+    pop();
+  });
+
 }
 
 function updatePositions() {
@@ -210,6 +237,13 @@ socket.on('otherjoined', (id) => {
   console.log(otherPlayers);
 });
 
+socket.on('otherleft', (id) => {
+  let index = otherPlayers.indexOf(id);
+  if (index > -1) {
+    otherPlayers.splice(index, 1);
+  }
+  console.log(id, 'left the room');
+});
 
 function keyReleased() {
   if (key == 'ArrowUp') {
