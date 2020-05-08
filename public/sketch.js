@@ -1,22 +1,24 @@
 // import Tile from './tile'
-let socket = io.connect('http://192.168.2.179:4000/');
+let socket = io.connect('http://localhost:4000/');
 let back;
 let board;
 let tex;
 let pieces = [];
 let pieceNames = ['m', 'p', 's'];
 let extraPieceNames = ['dg', 'dr', 'dw', 'we', 'wn', 'ws', 'ww'];
-let tileWidth = 60/1920;
-let tileHeight = 80/1920;
-let tileDepth = 40/1920;
+let tileWidth = 60 / 1920;
+let tileHeight = 80 / 1920;
+let tileDepth = 40 / 1920;
 let hand = [];
 let myRoom = '';
 let myName = '';
 let input = '';
-let tableWidth = 1500/1920;
-let tableDepth = 1500/1080;
+let tableWidth = 1500 / 1920;
+let tableDepth = 1500 / 1080;
 let tableHeight = 200;
 let selected;
+let otherHands = [];
+let otherPlayers = [];
 
 function preload() {
   back = loadImage('images/back.png');
@@ -47,8 +49,15 @@ function setup() {
   imageMode(CENTER);
   cv.position(0, 0);
   for (var i = 0; i < 13; i++) {
-    let t = new Tile(pieces[Math.floor(Math.random() * pieces.length)], i * tileWidth-13*tileWidth/2+i*2+tileWidth/2-13, -tileHeight / 2, -tableDepth/2+175);
+    let t = new Tile(pieces[Math.floor(Math.random() * pieces.length)], i * tileWidth - 13 * tileWidth / 2 + i * 2 + tileWidth / 2 - 13, -tileHeight / 2, -tableDepth / 2 + 175);
     hand.push(t);
+  }
+  for (var i = 0; i < 3; i++) {
+    let h = [];
+    for (var j = 0; j < 13; j++) {
+      h.push(new DummyTile(j * tileWidth - 13 * tileWidth / 2 + j * 2 + tileWidth / 2 - 13, tileHeight * 1.5, -tableDepth / 2.5, i - 1));
+    }
+    otherHands.push(h);
   }
 }
 
@@ -56,33 +65,33 @@ let angle = 70 * Math.PI / 180;
 let index = 0;
 
 function draw() {
-  if(myName == '') {
+  if (myName == '') {
     background(51);
-    textAlign(CENTER,CENTER);
+    textAlign(CENTER, CENTER);
     textFont(inconsolata);
     textSize(70);
     fill(255);
-    text("Enter your name", 0, -height/2+100);
+    text("Enter your name", 0, -height / 2 + 100);
     text(input, 0, 0);
     return;
-  } else if(myRoom == '') {
+  } else if (myRoom == '') {
     background(51);
-    textAlign(CENTER,CENTER);
+    textAlign(CENTER, CENTER);
     textFont(inconsolata);
     textSize(70);
     fill(255);
-    text("Enter a room name to create or join", 0, -height/2+100);
+    text("Enter a room name to create or join", 0, -height / 2 + 100);
     text(input, 0, 0);
     return;
   }
 
   background(51);
-  if(keys.up) {
-    angle-=0.025;
+  if (keys.up) {
+    angle -= 0.025;
   }
 
-  if(keys.down) {
-    angle+=0.025;
+  if (keys.down) {
+    angle += 0.025;
   }
   lights();
   push();
@@ -93,7 +102,7 @@ function draw() {
   // fill(0, 100, 0);
   texture(tex);
   textureMode(IMAGE);
-  box(tableWidth, tableDepth, tableHeight-1);
+  box(tableWidth, tableDepth, tableHeight - 1);
   pop();
   // noStroke();
   // normalMaterial();
@@ -117,18 +126,24 @@ function draw() {
   }
 
 
-  if(selected != undefined) {
+  if (selected != undefined) {
     selected[0].highlight();
   }
 
   // plane(150);
   // angle += 0.07;
+  otherHands.forEach((hand, i) => {
+    hand.forEach((item, j) => {
+      item.show();
+    });
+  });
+
 }
 
 function updatePositions() {
   let n = hand.length;
   for (var i = 0; i < n; i++) {
-    hand[i].x = i * tileWidth-n*tileWidth/2+i*2+tileWidth/2-n;
+    hand[i].x = i * tileWidth - n * tileWidth / 2 + i * 2 + tileWidth / 2 - n;
   }
 }
 
@@ -138,33 +153,33 @@ let keys = {
 }
 
 function keyPressed() {
-  if(key == 'ArrowUp') {
+  if (key == 'ArrowUp') {
     keys.up = true;
   }
-  if(key == 'ArrowDown') {
+  if (key == 'ArrowDown') {
     keys.down = true;
   }
-  if(myName == '') {
-    if(key.length == 1) {
-      input+=key;
+  if (myName == '') {
+    if (key.length == 1) {
+      input += key;
     }
-    if(key == 'Backspace') {
-      input = input.substring(0, input.length-1);
+    if (key == 'Backspace') {
+      input = input.substring(0, input.length - 1);
     }
-    if(input.length > 0 && key == 'Enter') {
+    if (input.length > 0 && key == 'Enter') {
       myName = input;
       socket.emit('new name', myName);
       input = '';
       return;
     }
-  } else if(myRoom == '') {
-    if(key.length == 1) {
-      input+=key;
+  } else if (myRoom == '') {
+    if (key.length == 1) {
+      input += key;
     }
-    if(key == 'Backspace') {
-      input = input.substring(0, input.length-1);
+    if (key == 'Backspace') {
+      input = input.substring(0, input.length - 1);
     }
-    if(input.length > 0 && key == 'Enter') {
+    if (input.length > 0 && key == 'Enter') {
       socket.emit('create or join', input);
       input = '';
     }
@@ -176,9 +191,11 @@ socket.on('created', (room) => {
   myRoom = room;
 });
 
-socket.on('joined', (room) => {
+socket.on('joined', (room, others) => {
   console.log('joined room', room);
   myRoom = room;
+  otherPlayers = others;
+  console.log(others);
 });
 
 socket.on('full', (room) => {
@@ -186,15 +203,19 @@ socket.on('full', (room) => {
 });
 
 socket.on('otherjoined', (id) => {
+  if (id != myName) {
+    otherPlayers.push(id);
+  }
   console.log(id, 'joined the room');
+  console.log(otherPlayers);
 });
 
 
 function keyReleased() {
-  if(key == 'ArrowUp') {
+  if (key == 'ArrowUp') {
     keys.up = false;
   }
-  if(key == 'ArrowDown') {
+  if (key == 'ArrowDown') {
     keys.down = false;
   }
 }
@@ -204,19 +225,23 @@ function mousePressed() {
 
   hand.some((item, i) => {
     // console.log(dist(0*tileWidth-tileWidth/2, height-tileHeight*2, mouseX, mouseY));
-    if(dist(2.5*i*tileWidth+0*tileWidth, height-tileHeight*2, 0, mouseX, mouseY, 0) < tileWidth*2) {
-      if(selected == undefined) {
+    if (dist(2.5 * i * tileWidth + 0 * tileWidth, height - tileHeight * 2, 0, mouseX, mouseY, 0) < tileWidth * 2) {
+      if (selected == undefined) {
         selected = [item, i];
       } else {
-        if(selected[1] == i) {
+        if (selected[1] == i) {
           selected = undefined
         } else {
           // hand[selected[1]] = undefined;
           // hand[selected[1]] = new Tile(item.image, selected[0].x, selected[0].y, selected[0].z);
           // hand[i] = new Tile(selected[0].image, hand[i].x,hand[i].y,hand[i].z);
           hand.splice(selected[1], 1);
-          hand.splice(i, 0, new Tile(selected[0].image, hand[i].x,hand[i].y,hand[i].z));
-          hand.join();
+          if (i == hand.length) {
+            hand.push(new Tile(selected[0].image, 0, item.y, item.z));
+          } else {
+            hand.splice(i, 0, new Tile(selected[0].image, 0, item.y, item.z));
+            hand.join();
+          }
           updatePositions();
           selected = undefined;
         }
@@ -239,10 +264,10 @@ class Tile {
     rotateX(PI / 2 + angle);
     rotateZ(PI);
     push();
-    translate(-this.x, this.y, this.z+tileDepth / 2 + 1);
+    translate(-this.x, this.y, this.z + tileDepth / 2 + 1);
     noFill();
-    stroke(255,0,0);
-    box(tileWidth+2, tileHeight+2, tileDepth+2);
+    stroke(255, 0, 0);
+    box(tileWidth + 2, tileHeight + 2, tileDepth + 2);
     pop();
     pop();
   }
@@ -252,12 +277,12 @@ class Tile {
     rotateX(PI / 2 + angle);
     rotateZ(PI);
     push();
-    translate(-this.x, this.y, this.z+tileDepth / 2 + 1);
+    translate(-this.x, this.y, this.z + tileDepth / 2 + 1);
     fill(255);
     box(tileWidth, tileHeight, tileDepth);
     pop();
     push();
-    translate(-this.x, this.y, this.z+tileDepth / 8 * 7.5);
+    translate(-this.x, this.y, this.z + tileDepth / 8 * 7.5);
     fill(0, 200, 0);
     box(tileWidth + 0.1, tileHeight + 0.1, tileDepth / 4);
     pop();
@@ -265,6 +290,41 @@ class Tile {
     rotateY(PI);
     translate(0, 0, -this.z);
     image(this.image, this.x, this.y, tileWidth, tileHeight);
+    pop();
+    // push();
+    // translate(0, 0, tileDepth + 2);
+    // image(back, this.x, this.y, tileWidth, tileHeight);
+    // pop();
+    pop();
+  }
+}
+
+class DummyTile {
+  constructor(x, y, z, n) {
+    this.n = n;
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+
+  show() {
+    push();
+    rotateX(PI / 2 + angle);
+    rotateZ(PI);
+    translate(0, -tableHeight / 2, 0);
+    rotateY(this.n * PI / 2 - PI);
+    // if (this.n == 0) {
+    //   rotateY(PI / 4);
+    // }
+    push();
+    translate(-this.x, this.y, this.z + tileDepth / 2 + 1);
+    fill(255);
+    box(tileWidth, tileHeight, tileDepth);
+    pop();
+    push();
+    translate(-this.x, this.y, this.z + tileDepth / 8 * 7.5);
+    fill(0, 200, 0);
+    box(tileWidth + 0.1, tileHeight + 0.1, tileDepth / 4);
     pop();
     // push();
     // translate(0, 0, tileDepth + 2);
