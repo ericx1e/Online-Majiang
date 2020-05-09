@@ -14,6 +14,8 @@ var io = require('socket.io').listen(server);
 let rooms = new Map();
 let decks = new Map();
 let socketNames = new Map();
+let turns = new Map();
+let isPlaying = new Map();
 
 io.sockets.on('connection', (socket) => {
   console.log('new connection ' + socket.id);
@@ -37,6 +39,8 @@ io.sockets.on('connection', (socket) => {
 
     if (numClients === 0) {
       rooms.set(room, [socketNames.get(socket.id)]);
+      turns.set(room, 0);
+      isPlaying.set(room, false);
       socket.join(room);
       socket.emit('created', room);
     } else if (numClients < 4) {
@@ -47,11 +51,28 @@ io.sockets.on('connection', (socket) => {
       io.sockets.in(room).emit('join', room);
       socket.join(room);
       io.to(room).emit('otherjoined', socketNames.get(socket.id));
+      io.to(room).emit('whosturn', rooms.get(room)[turns.get(room)]);
+      if(numClients == 3) {
+        isPlaying.set(room, true);
+      }
     } else {
       socket.emit('full', room);
     }
     // socket.emit('emit(): client ' + socket.id + ' joined room ' + room);
     // socket.broadcast.emit('broadcast(): client ' + socket.id + ' joined room ' + room);
+  });
+
+  socket.on('turn', (room) => {
+    if(!isPlaying.get(room)) {
+      return;
+    }
+    let n = turns.get(room);
+    n++;
+    if(n > 3) {
+      n = 0;
+    }
+    turns.set(room, n);
+    io.to(room).emit('whosturn', rooms.get(room)[turns.get(room)]);
   });
 
   socket.on('disconnect', () => {
@@ -66,7 +87,6 @@ io.sockets.on('connection', (socket) => {
         room.splice(room.indexOf(name), 1);
       }
     });
-
   });
 });
 

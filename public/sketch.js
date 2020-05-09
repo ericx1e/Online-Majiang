@@ -1,5 +1,5 @@
 // import Tile from './tile'
-let socket = io.connect('http://localhost:4000/');
+let socket = io.connect('http://192.168.2.178:4000/');
 let back;
 let board;
 let tex;
@@ -19,6 +19,11 @@ let tableHeight = 200;
 let selected;
 let otherHands = [];
 let otherPlayers = [];
+let message;
+let messageStartFrame;
+let whosturn = '';
+let playTileButton;
+let buttons = [];
 
 function preload() {
   back = loadImage('images/back.png');
@@ -59,10 +64,12 @@ function setup() {
     }
     otherHands.push(h);
   }
+
+  playTileButton = new Button(-width / 2 + 100, -height / 2 + 100, 150, 50, "Play Tile");
+  buttons.push(playTileButton);
 }
 
 let angle = 70 * Math.PI / 180;
-let index = 0;
 
 function draw() {
   if (myName == '') {
@@ -86,45 +93,23 @@ function draw() {
   }
 
   background(51);
-  if (keys.up) {
-    angle -= 0.025;
-  }
-
-  if (keys.down) {
-    angle += 0.025;
-  }
   lights();
   push();
   translate(0, 0, -200);
   rotateX(angle);
   image(board, 0, 0, tableWidth, tableDepth);
   translate(0, 0, -100);
-  // fill(0, 100, 0);
   texture(tex);
   textureMode(IMAGE);
   box(tableWidth, tableDepth, tableHeight - 1);
   pop();
-  // noStroke();
-  // normalMaterial();
   rectMode(CENTER);
   noStroke();
-  // fill(255);
-  // rotateX(angle * 0.5);
-  // rotateY(angle * 0.3);
-  // rotateZ(angle * 0.3);
-  // image(b, -windowWidth/2, -windowHeight/2, windowWidth, windowHeight);
-  // rect(0, 0, 150, 150);
-  // if (frameCount % 20 == 0) {
-  //   t = new Tile(pieces[index++], 0, -tileHeight / 2);
-  // }
-  // index %= pieces.length;
-  // t.show();
   if (hand.length > 0) {
     hand.forEach((item, i) => {
       item.show();
     });
   }
-
 
   if (selected != undefined) {
     selected[0].highlight();
@@ -145,14 +130,26 @@ function draw() {
     translate(0, -tableHeight / 2, 0);
     rotateY((i - 1) * PI / 2);
     translate(0, -100, tableDepth / 2);
+    if (whosturn == item) {
+      // stroke(255, 0, 0);
+      directionalLight(255, 255, 0, 0, 1, 0);
+    }
+    noStroke();
     fill(150);
     push();
-    translate(0, 0, 150);
+    translate(0, 150, 150);
     sphere(100);
     push();
     translate(0, 200, 0);
     cylinder(50, 400);
     pop();
+    // if(whosturn == item) {
+    //   push();
+    //   translate(0, -250, -200);
+    //   fill(255, 0, 0);
+    //   cone(50, 60);
+    //   pop();
+    // }
     pop();
     rotateY(PI);
     fill(255);
@@ -165,6 +162,40 @@ function draw() {
     pop();
   });
 
+  updateButtons();
+  showMessage();
+}
+
+function updateButtons() {
+  buttons.forEach((item, i) => {
+    item.show();
+  });
+  if (playTileButton.down && whosturn == myName) {
+    if(selected == undefined) {
+      newMessage('Please select a tile');
+    } else {
+      socket.emit('turn', myRoom);
+    }
+  }
+}
+
+function newMessage(msg) {
+  message = msg;
+  messageStartFrame = frameCount;
+}
+
+function showMessage() {
+  let n = frameCount - messageStartFrame;
+  if(n > 255) {
+    message = '';
+  }
+  push();
+  textAlign(CENTER, CENTER);
+  textFont(inconsolata);
+  textSize(50);
+  fill(255, 255-n);
+  text(message, 0, -height / 2 + 100);
+  pop();
 }
 
 function updatePositions() {
@@ -174,18 +205,7 @@ function updatePositions() {
   }
 }
 
-let keys = {
-  up: false,
-  down: false,
-}
-
 function keyPressed() {
-  if (key == 'ArrowUp') {
-    keys.up = true;
-  }
-  if (key == 'ArrowDown') {
-    keys.down = true;
-  }
   if (myName == '') {
     if (key.length == 1) {
       input += key;
@@ -197,7 +217,7 @@ function keyPressed() {
       myName = input;
       socket.emit('new name', myName);
       input = '';
-      return;
+      return false;
     }
   } else if (myRoom == '') {
     if (key.length == 1) {
@@ -215,18 +235,20 @@ function keyPressed() {
 
 socket.on('created', (room) => {
   console.log('created room', room);
+  newMessage('created room ' + room);
   myRoom = room;
 });
 
 socket.on('joined', (room, others) => {
   console.log('joined room', room);
+  newMessage('joined room ' + room);
   myRoom = room;
   otherPlayers = others;
-  console.log(others);
 });
 
 socket.on('full', (room) => {
   console.log('room', room, 'is full');
+  newMessage('room ' + room + ' is full');
 });
 
 socket.on('otherjoined', (id) => {
@@ -234,7 +256,7 @@ socket.on('otherjoined', (id) => {
     otherPlayers.push(id);
   }
   console.log(id, 'joined the room');
-  console.log(otherPlayers);
+  newMessage(id + ' joined room');
 });
 
 socket.on('otherleft', (id) => {
@@ -245,14 +267,14 @@ socket.on('otherleft', (id) => {
   console.log(id, 'left the room');
 });
 
-function keyReleased() {
-  if (key == 'ArrowUp') {
-    keys.up = false;
+socket.on('whosturn', (id) => {
+  whosturn = id;
+  if (whosturn == myName) {
+    newMessage('your turn');
   }
-  if (key == 'ArrowDown') {
-    keys.down = false;
-  }
-}
+});
+
+function keyReleased() {}
 
 
 function mousePressed() {
@@ -282,6 +304,16 @@ function mousePressed() {
       }
       return true;
     }
+  });
+
+  buttons.forEach((item, i) => {
+    item.checkClicked();
+  });
+}
+
+function mouseReleased() {
+  buttons.forEach((item, i) => {
+    item.down = false;
   });
 }
 
@@ -365,5 +397,38 @@ class DummyTile {
     // image(back, this.x, this.y, tileWidth, tileHeight);
     // pop();
     pop();
+  }
+}
+
+class Button {
+  constructor(x, y, w, h, text) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.text = text;
+    this.down = false;
+  }
+
+  show() {
+    push();
+    rectMode(CENTER);
+    if (this.down) {
+      fill(120);
+    } else {
+      fill(160);
+    }
+    rect(this.x, this.y, this.w, this.h);
+    textAlign(CENTER, CENTER);
+    textFont(inconsolata);
+    textSize(30);
+    fill(255);
+    text(this.text, this.x, this.y);
+    pop();
+  }
+
+  checkClicked() {
+    this.down = (mouseX-width/2 > this.x - this.w / 2 && mouseX-width/2 < this.x + this.w / 2 && mouseY-height/2 > this.y - this.h / 2 && mouseY-height/2 < this.y + this.h / 2);
+    return this.down;
   }
 }
