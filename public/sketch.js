@@ -3,7 +3,7 @@ let socket = io.connect('http://192.168.2.178:4000/');
 let back;
 let board;
 let tex;
-let pieces = [];
+let tileImages = new Map();
 let pieceNames = ['m', 'p', 's'];
 let extraPieceNames = ['dg', 'dr', 'dw', 'we', 'wn', 'ws', 'ww'];
 let tileWidth = 60 / 1920;
@@ -17,13 +17,15 @@ let tableWidth = 1500 / 1920;
 let tableDepth = 1500 / 1080;
 let tableHeight = 200;
 let selected;
-let otherHands = [];
+let otherHands = new Map();
 let otherPlayers = [];
 let message;
 let messageStartFrame;
 let whosturn = '';
 let playTileButton;
 let buttons = [];
+let gameStarted = false;
+let playedTiles = [];
 
 function preload() {
   back = loadImage('images/back.png');
@@ -32,46 +34,71 @@ function preload() {
   inconsolata = loadFont('assets/Inconsolata-Black.otf');
   pieceNames.forEach((item, i) => {
     for (var n = 1; n <= 9; n++) {
-      pieces.push(loadImage('images/' + item + n + '.png'));
+      tileImages.set(item + n, loadImage('images/' + item + n + '.png'));
     }
   });
 
   extraPieceNames.forEach((item, i) => {
-    pieces.push(loadImage('images/' + item + '.png'));
+    tileImages.set(item, loadImage('images/' + item + '.png'));
   });
-
 }
 
 function setup() {
-  const cv = createCanvas(displayWidth, displayHeight, WEBGL);
-  tableWidth *= displayWidth;
-  tableDepth *= displayHeight;
-  tileWidth *= displayWidth;
-  tileDepth *= displayWidth;
-  tileHeight *= displayWidth;
+  const cv = createCanvas(1920, 1080, WEBGL);
+  tableWidth *= 1920;
+  tableDepth *= 1080;
+  tileWidth *= 1920;
+  tileDepth *= 1920;
+  tileHeight *= 1920;
   console.log(displayWidth, displayHeight);
-  fullscreen(true);
+  // fullscreen(true);
   imageMode(CENTER);
   cv.position(0, 0);
-  for (var i = 0; i < 13; i++) {
-    let t = new Tile(pieces[Math.floor(Math.random() * pieces.length)], i * tileWidth - 13 * tileWidth / 2 + i * 2 + tileWidth / 2 - 13, -tileHeight / 2, -tableDepth / 2 + 175);
-    hand.push(t);
-  }
-  for (var i = 0; i < 3; i++) {
-    let h = [];
-    for (var j = 0; j < 13; j++) {
-      h.push(new DummyTile(j * tileWidth - 13 * tileWidth / 2 + j * 2 + tileWidth / 2 - 13, tileHeight * 1.5, -tableDepth / 2.5, i - 1));
-    }
-    otherHands.push(h);
-  }
 
   playTileButton = new Button(-width / 2 + 100, -height / 2 + 100, 150, 50, "Play Tile");
+  pongButton = new Button(-width / 2 + 300, -height / 2 + 100, 150, 50, "Pong");
+  chitButton = new Button(-width / 2 + 500, -height / 2 + 100, 150, 50, "Chi");
   buttons.push(playTileButton);
+  buttons.push(pongButton);
+  buttons.push(chitButton);
 }
+
+socket.on('startgame', () => {
+  gameStarted = true;
+  newMessage('game started');
+  for (var i = 0; i < 13; i++) {
+    socket.emit('requesttile', myRoom);
+  }
+
+  for (var i = 0; i < otherPlayers.length; i++) {
+    let h = [];
+    for (var j = 0; j < 13; j++) {
+      h.push(new DummyTile(i - 1));
+    }
+    otherHands.set(otherPlayers[i], h);
+  }
+});
+
+socket.on('givetile', (name, tileId) => {
+  if (name == myName) {
+    let i = 0;
+    let t = new Tile(tileId, i * tileWidth - 13 * tileWidth / 2 + i * 2 + tileWidth / 2 - 13, -tileHeight / 2, -tableDepth / 2 + 175);
+    hand.push(t);
+    updatePositions();
+  } else {
+    // otherHands.get(name).push(new DummyTile(0));
+  }
+});
+
+socket.on('playedtile', (name, tileId) => {
+  playedTiles.push(new PlayedTile(tileId, 0, 0, 0));
+});
 
 let angle = 70 * Math.PI / 180;
 
 function draw() {
+  // if(key == ' ')
+  // orbitControl();
   if (myName == '') {
     background(51);
     textAlign(CENTER, CENTER);
@@ -106,8 +133,10 @@ function draw() {
   rectMode(CENTER);
   noStroke();
   if (hand.length > 0) {
-    hand.forEach((item, i) => {
-      item.show();
+    hand.some((item, i) => {
+      if (item != undefined) {
+        item.show();
+      }
     });
   }
 
@@ -117,8 +146,12 @@ function draw() {
 
   // plane(150);
   // angle += 0.07;
-  otherHands.forEach((hand, i) => {
+  otherHands.forEach((value, key, map) => {
+    let hand = value;
     hand.forEach((item, j) => {
+      item.x = j * tileWidth - 13 * tileWidth / 2 + j * 2 + tileWidth / 2 - 13;
+      item.y = tileHeight * 1.5;
+      item.z = -tableDepth / 2.5;
       item.show();
     });
   });
@@ -162,21 +195,70 @@ function draw() {
     pop();
   });
 
-  updateButtons();
+  if (gameStarted) {
+    updateButtons();
+  }
   showMessage();
+  drawPlayedTiles();
+}
+
+function drawPlayedTiles() {
+  playedTiles.forEach((item, i) => {
+    item.x = tileWidth/2*12/2 - (i%12) * tileWidth / 2;
+    item.z = -tileHeight + 11;
+    item.y = -tileHeight/2*12/2 + tileHeight/2  * Math.floor(i / 12);
+    item.show();
+  });
+
 }
 
 function updateButtons() {
   buttons.forEach((item, i) => {
     item.show();
   });
-  if (playTileButton.down && whosturn == myName) {
-    if(selected == undefined) {
-      newMessage('Please select a tile');
+  if (playTileButton.down) {
+    if (whosturn == myName) {
+      if (selected == undefined) {
+        newMessage('Please select a tile');
+      } else {
+        hand.splice(selected[1], 1);
+        socket.emit('turn', myRoom, selected[0].type);
+        selected = undefined;
+        updatePositions();
+      }
     } else {
-      socket.emit('turn', myRoom);
+      // newMessage("It's not your turn");
     }
   }
+
+  if (playedTiles.length == 0) {
+    return;
+  }
+  let lastPlayedTile = playedTiles[playedTiles.length - 1];
+  if (pongButton.down) {
+    console.log("buh");
+    let count = 0;
+    hand.forEach((item, i) => {
+      if (item.type == lastPlayedTile.type) {
+        count++;
+      }
+    });
+    if (count == 2) {
+      socket.emit('pong', myRoom, lastPlayedTile.type);
+      hand.forEach((item, i) => {
+        if (item.type == lastPlayedTile.type) {
+          hand.splice(i, 1);
+        }
+      });
+      updatePositions();
+    } else {
+      newMessage('not enough tiles');
+    }
+  }
+}
+
+socket.on('pong', name, tileId) {
+
 }
 
 function newMessage(msg) {
@@ -186,14 +268,14 @@ function newMessage(msg) {
 
 function showMessage() {
   let n = frameCount - messageStartFrame;
-  if(n > 255) {
+  if (n > 255) {
     message = '';
   }
   push();
   textAlign(CENTER, CENTER);
   textFont(inconsolata);
   textSize(50);
-  fill(255, 255-n);
+  fill(255, 255 - n);
   text(message, 0, -height / 2 + 100);
   pop();
 }
@@ -231,6 +313,17 @@ function keyPressed() {
       input = '';
     }
   }
+  if (key == 'q') {
+    if (angle == -PI / 8) {
+      angle = 70 * Math.PI / 180;
+    } else {
+      angle = -PI / 8
+    }
+  }
+}
+
+function keyReleased() {
+  console.log("wtf");
 }
 
 socket.on('created', (room) => {
@@ -271,6 +364,9 @@ socket.on('whosturn', (id) => {
   whosturn = id;
   if (whosturn == myName) {
     newMessage('your turn');
+    if (gameStarted) {
+      socket.emit('requesttile', myRoom);
+    }
   }
 });
 
@@ -281,7 +377,7 @@ function mousePressed() {
 
   hand.some((item, i) => {
     // console.log(dist(0*tileWidth-tileWidth/2, height-tileHeight*2, mouseX, mouseY));
-    if (dist(2.5 * i * tileWidth + 0 * tileWidth, height - tileHeight * 2, 0, mouseX, mouseY, 0) < tileWidth * 2) {
+    if (dist(2.5 * i * tileWidth + (13 - hand.length) * tileWidth, height - tileHeight * 2, 0, mouseX, mouseY, 0) < tileWidth * 2) {
       if (selected == undefined) {
         selected = [item, i];
       } else {
@@ -293,9 +389,9 @@ function mousePressed() {
           // hand[i] = new Tile(selected[0].image, hand[i].x,hand[i].y,hand[i].z);
           hand.splice(selected[1], 1);
           if (i == hand.length) {
-            hand.push(new Tile(selected[0].image, 0, item.y, item.z));
+            hand.push(new Tile(selected[0].type, 0, item.y, item.z));
           } else {
-            hand.splice(i, 0, new Tile(selected[0].image, 0, item.y, item.z));
+            hand.splice(i, 0, new Tile(selected[0].type, 0, item.y, item.z));
             hand.join();
           }
           updatePositions();
@@ -319,10 +415,11 @@ function mouseReleased() {
 
 class Tile {
   constructor(image, x, y, z) {
-    this.image = image;
+    this.image = tileImages.get(image);
     this.x = x;
     this.y = y;
     this.z = z;
+    this.type = image;
   }
 
   highlight() {
@@ -356,6 +453,45 @@ class Tile {
     rotateY(PI);
     translate(0, 0, -this.z);
     image(this.image, this.x, this.y, tileWidth, tileHeight);
+    // console.log(this.image);
+    pop();
+    // push();
+    // translate(0, 0, tileDepth + 2);
+    // image(back, this.x, this.y, tileWidth, tileHeight);
+    // pop();
+    pop();
+  }
+}
+
+class PlayedTile {
+  constructor(image, x, y, z) {
+    this.image = tileImages.get(image);
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.type = image;
+  }
+  show() {
+    push();
+    rotateX(angle);
+    // rotateY(PI);
+    // rotateZ(PI);
+    push();
+    translate(-this.x, this.y, this.z + tileDepth / 2 + 1);
+    fill(255);
+    box(tileWidth / 2, tileHeight / 2, tileDepth / 2);
+    pop();
+    push();
+    translate(-this.x, this.y, this.z + tileDepth / 4 / 8 * 7.5);
+    fill(0, 200, 0);
+    box(tileWidth / 2 + 0.1, tileHeight / 2 + 0.1, tileDepth / 2 / 4);
+    pop();
+    push();
+    rotateY(PI);
+    translate(this.x, this.y, -this.z - tileDepth / 2 - 11.1);
+    rotateY(PI);
+    image(this.image, 0, 0, tileWidth / 2, tileHeight / 2);
+    // console.log(this.image);
     pop();
     // push();
     // translate(0, 0, tileDepth + 2);
@@ -366,11 +502,11 @@ class Tile {
 }
 
 class DummyTile {
-  constructor(x, y, z, n) {
+  constructor(n) {
     this.n = n;
-    this.x = x;
-    this.y = y;
-    this.z = z;
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
   }
 
   show() {
@@ -428,7 +564,7 @@ class Button {
   }
 
   checkClicked() {
-    this.down = (mouseX-width/2 > this.x - this.w / 2 && mouseX-width/2 < this.x + this.w / 2 && mouseY-height/2 > this.y - this.h / 2 && mouseY-height/2 < this.y + this.h / 2);
+    this.down = (mouseX - width / 2 > this.x - this.w / 2 && mouseX - width / 2 < this.x + this.w / 2 && mouseY - height / 2 > this.y - this.h / 2 && mouseY - height / 2 < this.y + this.h / 2);
     return this.down;
   }
 }
