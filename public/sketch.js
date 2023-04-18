@@ -1,5 +1,5 @@
 // import Tile from './tile'
-let socket = io.connect('http://192.168.2.178:4000/');
+let socket = io.connect('https://radiant-fortress-82724.herokuapp.com/');
 let back;
 let board;
 let tex;
@@ -204,9 +204,9 @@ function draw() {
 
 function drawPlayedTiles() {
   playedTiles.forEach((item, i) => {
-    item.x = tileWidth/2*12/2 - (i%12) * tileWidth / 2;
+    item.x = tileWidth / 2 * 12 / 2 - (i % 12) * tileWidth / 2;
     item.z = -tileHeight + 11;
-    item.y = -tileHeight/2*12/2 + tileHeight/2  * Math.floor(i / 12);
+    item.y = -tileHeight / 2 * 12 / 2 + tileHeight / 2 * Math.floor(i / 12);
     item.show();
   });
 
@@ -257,9 +257,9 @@ function updateButtons() {
   }
 }
 
-socket.on('pong', name, tileId) {
+// socket.on('pong', name, tileId) {
 
-}
+// }
 
 function newMessage(msg) {
   message = msg;
@@ -370,7 +370,7 @@ socket.on('whosturn', (id) => {
   }
 });
 
-function keyReleased() {}
+function keyReleased() { }
 
 
 function mousePressed() {

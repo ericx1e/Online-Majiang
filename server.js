@@ -1,7 +1,7 @@
 var express = require('express');
 
 var app = express();
-var server = app.listen(4000);
+var server = app.listen(process.env.PORT || 3000);
 
 app.use(express.static('public'));
 
@@ -29,7 +29,7 @@ io.sockets.on('connection', (socket) => {
     socketNames.set(socket.id, name);
   });
 
-  socket.on('create or join', function(room) {
+  socket.on('create or join', function (room) {
     // numClients = io.of('/').in(room).clients;
     let numClients;
     if (rooms.get(room) == undefined) {
@@ -136,4 +136,4 @@ function numClientsInRoom(namespace, room) {
 
 var connections = 0;
 
-function newConnection(socket) {}
+function newConnection(socket) { }
